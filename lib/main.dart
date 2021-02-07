@@ -6,48 +6,49 @@ import 'package:location/location.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 void main() => runApp(Mosam());
-var url = "https://api.openweathermap.org/data/2.5/weather";
-var apiKey = "399ac87a8ac9ca37d32b67fcb4ea98bb";
 
 class Mosam extends StatefulWidget {
   @override
   _MosamState createState() => _MosamState();
 }
 
+final url = "https://api.openweathermap.org/data/2.5/weather?";
+final apiKey = "293372879a57bbe2071fb4abdb7e179d";
+
 class _MosamState extends State<Mosam> {
-  String globalData;
   bool isLoading = true;
+  var weatherData;
 
-  Location location = new Location();
-
-  // bool _serviceEnabled;
-  // PermissionStatus _permissionGranted;
-  LocationData _locationData;
-  getLocation() async {
+  getWeather(lat, lon) async {
     try {
-      if (await Permission.location.request().isGranted) {
-        _locationData = await location.getLocation();
+      await http.get(url + "lat=$lat&lon=$lon&appid=$apiKey").then(
+            (res) => weatherData = jsonDecode(res.body),
+          );
+      if (weatherData['cod'] == 200) {
+        print(weatherData['weather'][0]['main']); //weather[0].main
+        setState(() {
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+        print(weatherData['cod']);
       }
-
-      getWeatherData(_locationData.latitude, _locationData.longitude);
     } catch (e) {
       print(e);
     }
   }
 
-  getWeatherData(latitude, longitude) async {
-    var data;
+  getLocation() async {
+    setState(() {
+      isLoading = true;
+    });
     try {
-      await http
-          .get(url + "?lat=$latitude&lon=$longitude&appid=$apiKey")
-          .then((res) => data = jsonDecode(res.body));
-      data['cod'] == "404"
-          ? globalData = data['message']
-          : globalData = data['weather'][0]['description'];
-      setState(() {
-        isLoading = false;
-      });
-      print(data['weather'][0]['description']);
+      if (await Permission.location.request().isGranted) {
+        LocationData location = await Location().getLocation();
+        getWeather(location.latitude, location.longitude);
+      }
     } catch (e) {
       print(e);
     }
@@ -62,25 +63,26 @@ class _MosamState extends State<Mosam> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      color: Colors.white,
       home: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
           child: Container(
             child: Center(
-              child: TextButton(
-                onPressed: () {
-                  getLocation();
-                },
-                child: isLoading
-                    ? Image.asset(
-                        "assets/loading.gif",
-                      )
-                    : Text(
-                        globalData == null
-                            ? "Press me to get weather"
-                            : globalData,
+              child: isLoading
+                  ? Image.asset("assets/loading.gif")
+                  : TextButton(
+                      onPressed: () {
+                        getWeather("27.2046", "77.4977");
+                      },
+                      child: Text(
+                        weatherData == null
+                            ? "Click me!"
+                            : weatherData['weather'] == null
+                                ? weatherData['cod'].toString()
+                                : weatherData['weather'][0]['main'].toString(),
                       ),
-              ),
+                    ),
             ),
           ),
         ),
